@@ -45,7 +45,6 @@ Este projeto combina o backend da API Java (originalmente do projeto `demo(2).zi
 
 ## Observações e Ajustes Realizados
 
-- **Backend Substituído:** O backend original (Sispad API) foi substituído pelo backend do projeto `demo` que você forneceu.
 - **Dependências do Frontend:** O conflito com `date-fns` foi resolvido alterando sua versão para `^3.6.0` no `package.json`.
 - **Integração API:**
     - A URL base da API no frontend está configurada em `frontend/src/config.ts` (atualmente `http://localhost:8080`).
@@ -61,5 +60,3 @@ Este projeto combina o backend da API Java (originalmente do projeto `demo(2).zi
     - **Pesquisa de Medicamentos (`MedicineSearch.tsx`):** Esta página ainda utiliza dados simulados (`mockMedicines`). **Será necessário implementar a busca real** utilizando o endpoint `GET /api/medicamentos/listar` ou similar do backend.
     - **Login e Cadastro de Usuário/Cliente:** As páginas `Login.tsx`, `UserRegistration.tsx` e `PatientFile.tsx` (cadastro de clientes/pacientes) **não foram ajustadas** para o novo backend, pois ele não possui endpoints equivalentes para usuários ou clientes (apenas para medicamentos e lotes). Será necessário implementar esses endpoints no backend e ajustar o frontend correspondentemente.
 - **CORS:** A configuração de CORS no backend (`backend/src/main/java/com/example/demo/DemoApplication.java` ou um arquivo de configuração dedicado, se existir) pode precisar ser ajustada para permitir requisições do frontend (`http://localhost:5173`). Verifique se há uma configuração `@CrossOrigin` ou `WebMvcConfigurer`.
-
-Recomenda-se revisar os arquivos mencionados e implementar as funcionalidades pendentes (busca de medicamentos, login, cadastro de usuários/clientes) conforme necessário.
