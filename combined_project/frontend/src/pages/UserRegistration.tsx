@@ -45,7 +45,7 @@ const UserRegistration: React.FC = () => {
     if (!validateForm()) return;
 
     setIsLoading(true);
-    setErrors({}); // Limpar erros anteriores
+    setErrors({});
 
     const userData = {
       nome: name,
@@ -70,7 +70,7 @@ const UserRegistration: React.FC = () => {
         throw new Error(responseData.message || `Erro ${response.status}: ${response.statusText}`);
       }
 
-      alert(responseData.message); // "Usuário registrado com sucesso!"
+      alert(responseData.message);
       navigate('/login');
     } catch (err: any) {
       setErrors({ form: err.message || 'Ocorreu um erro ao cadastrar. Tente novamente.' });

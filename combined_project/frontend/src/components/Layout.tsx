@@ -1,18 +1,153 @@
-import React from "react";
-import { Outlet } from "react-router-dom";
-import { Link, useLocation } from "react-router-dom";
+import React, { useState, useEffect, useRef } from "react";
+import { Outlet, Link, useLocation, useNavigate } from "react-router-dom";
 import "../styles/Dashboard.css";
 import { useAuth } from "../context/AuthContext";
+
+interface LowStockItem {
+  medicamentoNome: string;
+  quantidadeDisponivel: number;
+  estoqueMinimo: number;
+}
 
 interface LayoutProps {
   children?: React.ReactNode;
 }
 
+const NotificationBell: React.FC<{ notifications: LowStockItem[] }> = ({
+  notifications,
+}) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+  const hasNotifications = notifications.length > 0;
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        dropdownRef.current &&
+        !dropdownRef.current.contains(event.target as Node)
+      ) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  return (
+    <div className="relative" ref={dropdownRef}>
+      {}
+      <button
+        onClick={() => setIsOpen(!isOpen)}
+        className="relative focus:outline-none p-2 rounded-full hover:bg-blue-100"
+      >
+        <svg
+          width="24"
+          height="24"
+          viewBox="0 0 24 24"
+          fill="none"
+          xmlns="http://www.w3.org/2000/svg"
+        >
+          <path
+            d="M18 8C18 6.4087 17.3679 4.88258 16.2426 3.75736C15.1174 2.63214 13.5913 2 12 2C10.4087 2 8.88258 2.63214 7.75736 3.75736C6.63214 4.88258 6 6.4087 6 8C6 15 3 17 3 17H21C21 17 18 15 18 8Z"
+            stroke="#2563EB"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+          <path
+            d="M13.73 21C13.5542 21.3031 13.3019 21.5547 12.9982 21.7295C12.6946 21.9044 12.3504 22.0001 12 22C11.6496 22.0001 11.3054 21.9044 11.0018 21.7295C10.6982 21.5547 10.4458 21.3031 10.27 21"
+            stroke="#2563EB"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </svg>
+
+        {hasNotifications && (
+          <span className="absolute top-1 right-1 flex h-3 w-3">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+            <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span>
+          </span>
+        )}
+      </button>
+
+      {isOpen && (
+        <div className="absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-xl border z-10 animate-fade-in-down">
+          <div className="p-4 border-b">
+            <h3 className="font-semibold text-gray-800">
+              Notificações de Estoque Baixo
+            </h3>
+          </div>
+          <div className="max-h-80 overflow-y-auto">
+            {hasNotifications ? (
+              notifications.map((item, index) => (
+                <Link
+                  to="/controle-estoque"
+                  onClick={() => setIsOpen(false)}
+                  key={index}
+                  className="block p-4 hover:bg-gray-50 border-b"
+                >
+                  <p className="font-bold text-red-600">
+                    Alerta: {item.medicamentoNome}
+                  </p>
+                  <p className="text-xs text-gray-600">
+                    Estoque Atual: {item.quantidadeDisponivel} (Mínimo:{" "}
+                    {item.estoqueMinimo})
+                  </p>
+                </Link>
+              ))
+            ) : (
+              <div className="p-4 text-center text-gray-500 text-sm">
+                Nenhuma notificação.
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+// --- COMPONENTE LAYOUT PRINCIPAL ---
 const Layout: React.FC<LayoutProps> = ({ children }) => {
   const location = useLocation();
-  const currentPath = location.pathname;
-  const { user, logout } = useAuth();
+  const navigate = useNavigate();
+  const { user, logout: authLogout } = useAuth();
 
+  const [lowStockItems, setLowStockItems] = useState<LowStockItem[]>([]);
+
+  useEffect(() => {
+    const fetchLowStockData = async () => {
+      if (!user?.token) return;
+
+      try {
+        const headers = { Authorization: `Bearer ${user.token}` };
+        const response = await fetch(
+          "http://localhost:8080/api/estoque/baixo",
+          { headers }
+        );
+        if (response.ok) {
+          const data = await response.json();
+          setLowStockItems(data);
+        } else {
+          console.error("Falha ao buscar notificações de estoque.");
+        }
+      } catch (error) {
+        console.error("Erro de rede ao buscar notificações:", error);
+      }
+    };
+
+    fetchLowStockData();
+    const interval = setInterval(fetchLowStockData, 2 * 60 * 1000);
+    return () => clearInterval(interval);
+  }, [user]);
+
+  const handleLogout = () => {
+    authLogout();
+    navigate("/login");
+  };
+
+  // Array de itens do menu com os SVGs completos
   const menuItems = [
     {
       path: "/dashboard",
@@ -187,7 +322,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
               key={item.path}
               to={item.path}
               className={`menu-button ${
-                currentPath === item.path ? "active" : ""
+                location.pathname.startsWith(item.path) ? "active" : ""
               }`}
             >
               <span className="mr-3">{item.icon}</span>
@@ -198,10 +333,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
 
         <div className="mt-auto pt-6">
           <button
-            onClick={() => {
-              localStorage.clear();
-              window.location.href = "/";
-            }}
+            onClick={handleLogout}
             className="menu-button text-red-600 hover:bg-red-50"
           >
             <svg
@@ -227,43 +359,8 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
 
       <div className="content-container">
         <div className="top-nav">
-          {/* <ul>
-            <li>
-              <a href="#" className="active">
-                Início
-              </a>
-            </li>
-            <li>
-              <a href="#">Relatórios</a>
-            </li>
-            <li>
-              <a href="#">Configurações</a>
-            </li>
-            <li>
-              <a href="#">Ajuda</a>
-            </li>
-          </ul> */}
-
-          <div className="ml-auto flex items-center">
-            <div className="relative mr-4">
-              <svg
-                width="20"
-                height="20"
-                viewBox="0 0 24 24"
-                fill="none"
-                xmlns="http://www.w3.org/2000/svg"
-                className="text-gray-500"
-              >
-                <path
-                  d="M15 17H20L18.5951 15.5951C18.2141 15.2141 18 14.6973 18 14.1585V11C18 8.38757 16.3304 6.16509 14 5.34142V5C14 3.89543 13.1046 3 12 3C10.8954 3 10 3.89543 10 5V5.34142C7.66962 6.16509 6 8.38757 6 11V14.1585C6 14.6973 5.78595 15.2141 5.40493 15.5951L4 17H9M15 17V18C15 19.6569 13.6569 21 12 21C10.3431 21 9 19.6569 9 18V17M15 17H9"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </svg>
-              <span className="absolute top-0 right-0 w-2 h-2 bg-red-500 rounded-full"></span>
-            </div>
+          <div className="ml-auto flex items-center gap-4">
+            <NotificationBell notifications={lowStockItems} />
 
             <div className="flex items-center">
               <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center mr-2">

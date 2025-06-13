@@ -5,9 +5,10 @@ import React, {
   ReactNode,
   useEffect,
 } from "react";
-import API_BASE_URL from "../config"; // Importar a URL base da API
+import API_BASE_URL from "../config";
 
 interface User {
+  id: number;
   name: string;
   username: string;
   email: string;
@@ -56,7 +57,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ username, senha: password }), // seu backend espera `senha`, não `password`
+        body: JSON.stringify({ username, senha: password }),
       });
 
       if (!response.ok) {
@@ -68,16 +69,19 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
       if (data.token) {
         localStorage.setItem("token", data.token);
 
-        // Você pode decodificar o token para obter informações do usuário (como username e role)
         const decoded = parseJwt(data.token);
 
         const loggedUser: User = {
-          name: decoded.sub || "", // ou algum outro campo no payload do token
+          id: decoded.userId,
+          name: decoded.sub || "",
           username: decoded.sub || "",
-          email: "", // se não estiver no token, pode deixar vazio
-          role: decoded.role || "user", // se estiver no token
+          email: "",
+          role: decoded.role || "user",
           token: data.token,
         };
+        if (!loggedUser.id) {
+          throw new Error("ID do usuário não encontrado no token JWT.");
+        }
 
         setUser(loggedUser);
       } else {
@@ -89,7 +93,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
     }
   };
 
-  // Função auxiliar para decodificar o token JWT (base64)
   function parseJwt(token: string): any {
     try {
       const base64Payload = token.split(".")[1];
@@ -105,17 +108,14 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
     username: string,
     email: string,
     password: string,
-    role: string // O backend Java espera um objeto UsuarioDTO sem role explícito na DTO
+    role: string
   ) => {
     try {
-      // Mapeando para o endpoint POST /usuarios do backend Java
       const response = await fetch(`${API_BASE_URL}/usuarios`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        // Ajustando o corpo para corresponder ao UsuarioDTO do backend
-        // Removendo 'role' e ajustando nomes de campos se necessário
         body: JSON.stringify({
           nome: name,
           login: username,
@@ -138,14 +138,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
       }
 
       const data = await response.json();
-      // Assumindo que a resposta do backend contém os dados do usuário criado
-      // Pode ser necessário adaptar a estrutura do 'User' ou a resposta do backend
       const newUser: User = {
         name: data.nome,
         username: data.login,
         email: data.email,
-        role: "user", // Definindo um role padrão, já que não vem da API
-        token: "fake-jwt-token", // Gerar ou obter token real se a API retornar
+        role: "user",
+        token: "fake-jwt-token",
       };
       setUser(newUser);
     } catch (error: any) {
